@@ -2,6 +2,7 @@
 using System.Data.SqlClient;
 using WEB_API.Models;
 using Dapper;
+using WEB_API.Dtos;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace WEB_API.Controllers
@@ -29,7 +30,32 @@ namespace WEB_API.Controllers
                 return result;
             }            
         }
-
+        [HttpGet("paging",Name ="GetPaging")]
+        public async Task<PageResult<Product>> GetPaging(string querySearch,int categoryId, int page,int limit)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                if (conn.State == System.Data.ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+                var parameters = new DynamicParameters();
+                parameters.Add("@querySearch", querySearch);
+                //parameters.Add("@categoryId", categoryId);
+                parameters.Add("@page", page);
+                parameters.Add("@limit", limit);
+                parameters.Add("@total", dbType:System.Data.DbType.Int32,direction:System.Data.ParameterDirection.Output);
+                var result = await conn.QueryAsync<Product>("Get_Product_Paging", parameters, null, null, System.Data.CommandType.StoredProcedure);
+                int total = parameters.Get<int>("@total");
+                return new PageResult<Product>()
+                {
+                    Items = result.ToList(),
+                    TotalRow = total,
+                    Page = page,
+                    Limit = limit
+                };
+            }
+        }
         // GET api/Product/5
         [HttpGet("{id}")]
         public async Task<Product> Get(int id)
@@ -98,6 +124,7 @@ namespace WEB_API.Controllers
         [HttpDelete("{id}")]
         public async Task Delete(int id)
         {
+
             using (var conn = new SqlConnection(_connectionString))
             {
                 if (conn.State == System.Data.ConnectionState.Closed)
